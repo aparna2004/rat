@@ -1,105 +1,130 @@
-import numpy as np
-import matplotlib.pyplot as plt
+emission_probs={"H":{"A":-2.322 , "C":-1.737, "G":-1.737 , "T":-2.322}, "L":{"A":-1.737 , "C":-2.322, "G":-2.322 , "T":-1.737} }
+transition_probs={ "H" : {"H":-1,"L":-1}, "L" : {"H":-1.322,"L":-0.737} }
+states=["H","L"]
 
-FUZZY_SETS = {
-    "NL": [0, 0, 31, 61], "NM": [31, 61, 95], "NS": [61, 95, 127], "ZE": [95, 127, 159],
-    "PS": [127, 159, 191], "PM": [159, 191, 223], "PL": [191, 223, 255, 255]
-}
-RULES = {
-    1: ["NL", "ZE", "PL"], 2: ["ZE", "NL", "PL"], 3: ["NM", "ZE", "PM"], 4: ["NS", "PS", "PS"],
-    5: ["PS", "NS", "NS"], 6: ["PL", "ZE", "NL"], 7: ["ZE", "NS", "PS"], 8: ["ZE", "NM", "PM"]
-}
-def triangular(x, a, b, c):
-    if a < x < b:
-        return (x - a) / (b - a)
-    if b <= x < c:
-        return  (c - x) / (c - b)
-    return 0
+input_str="GGCACTGAA"
+start_probs={"H":-1, "L":-1}
 
-def trapezoidal(x, a, b, c, d):
-    if a < x < b:
-        return (x - a) / (b - a)
-    if b <= x <= c:
-        return 1
-    if c < x < d:
-        return  (d - x) / (d - c)
-    return 0
-  
-def get_membership(x, fuzzy_sets):
-    return trapezoidal(x, *fuzzy_sets) if len(fuzzy_sets) == 4 else triangular(x, *fuzzy_sets)
+vit_res={}
+v_init_H=start_probs["H"]+emission_probs["H"][input_str[0]]
+v_init_L=start_probs["L"]+emission_probs["L"][input_str[0]]
+vit_res[0]={"H":v_init_H, "L":v_init_L}
 
-def fuzzify(value, sets):
-    fuzzy_values = {}
-    for key, fuzzy_set in sets.items():
-        fuzzy_values[key] = get_membership(value, fuzzy_set)
-    return fuzzy_values
 
-def apply_rules(speed_fuzzy, accel_fuzzy):
-    rules_strength = {}
+for i in range(1, len(input_str)):
+  temp_dict={}
+  for j in range(len(states)):
+    temp_dict[states[j]]=0
+  vit_res[i]=temp_dict
 
-    for i, (speed, accel, output) in RULES.items():
-        strength = min(speed_fuzzy.get(speed, 0), accel_fuzzy.get(accel, 0))
-        if strength > 0:
-            rules_strength[i] = strength, output
 
-    return rules_strength
+for i in range(1,len(input_str)):
+  for j in range(len(states)):
+    term1=emission_probs[states[j]][input_str[i]]
+    lis=[]
+    for k in range(len(states)):
+      lis.append(vit_res[i-1][states[k]]+transition_probs[states[k]][states[j]])
+    maximum=max(lis)
+    final_res=round(term1+maximum,6)
 
-def calculate_areas(rules_strengths):
-    areas = {}
-    weighted_areas = {}
+    vit_res[i][states[j]]=final_res
 
-    for i, (height, output) in rules_strengths.items():
-        set_vals = FUZZY_SETS[output]
-        centroid = (set_vals[1] if len(set_vals) == 3 else (set_vals[1] + set_vals[2])/2) 
+#print(vit_res)
 
-        base = 0
-        if len(set_vals) == 4:
-            base1 = set_vals[0] - set_vals[3]
-            base2 = set_vals[2] - set_vals[1]
-            base = base1 + base2
-        if len(set_vals) == 3:
-            base = set_vals[2] - set_vals[0]
-        
-        areas[i] = (height * base) / 2
-        weighted_areas[i] = centroid * areas[i]
+h_lis=[]
+l_lis=[]
 
-    return areas, weighted_areas
+for key in list(vit_res.keys()):
+  val=vit_res[key]
+  for v in list(val.keys()):
+    if(v=='H'):
+      h_lis.append(val[v])
+    else:
+      l_lis.append(val[v])
 
-def defuzzify(areas, weighted_areas):
-    return sum(weighted_areas.values()) / sum(areas.values())
 
-speed = 100
-acceleration = 70
+print("States",end="\t\t")
+for key in list(vit_res.keys()):
+  char=input_str[key]
+  print(char,end="\t\t")
 
-speed_fuzzy = fuzzify(speed, FUZZY_SETS)
-accel_fuzzy = fuzzify(acceleration, FUZZY_SETS)
+print("\n")
+print("H",end="\t\t")
+for h in h_lis:
+  print(h,end="\t\t")
 
-rules_strengths = apply_rules(speed_fuzzy, accel_fuzzy)
+print("\n\n")
+print("L",end="\t\t")
+for l in l_lis:
+  print(l,end="\t\t")
 
-areas, weighted_areas = calculate_areas(rules_strengths)
-throttle = defuzzify(areas, weighted_areas)
 
-print(f"Output: {throttle:.2f}")
+max_path=[]
+print("\n\nPATH SEQUENCE")
+for i in range(len(h_lis)):
+  if(h_lis[i]>l_lis[i]):
+    max_path.append('H')
+  else:
+    max_path.append('L')
 
-def plot(sets, title, highlight_x=None):
-    plt.figure(figsize=(8,4))
-    x_vals = np.linspace(0, 255, 500)
+print(max_path)
 
-    for label, params in sets.items():
-        y_vals = [get_membership(x, params) for x in x_vals]
-        plt.plot(x_vals, y_vals, label=label)
+H = {'A': 0.2, 'C': 0.3, 'G': 0.3, 'T': 0.2}
+L = {'A': 0.3, 'C': 0.2, 'G': 0.2, 'T': 0.3}
 
-    if highlight_x is not None:
-        plt.axvline(x=highlight_x, color="red", linestyle="--", label=f"Output: {highlight_x:.2f}")
+trProb = {     ('S', 'H'): 0.5, 
+               ('S', 'L'): 0.5, 
+               ('H', 'H'): 0.5, 
+               ('L', 'L'): 0.6, 
+               ('L', 'H'): 0.4, 
+               ('H', 'L'): 0.5
+         }
 
-    plt.title(title)
-    plt.xlabel("Value")
-    plt.ylabel("Membership")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+seq = 'GGCA'
+P = []
 
-plot(FUZZY_SETS, "Speed Fuzzy Sets")
-plot(FUZZY_SETS, "Acceleration Fuzzy Sets")
-plot(FUZZY_SETS, "Throttle Output Fuzzy Sets", throttle)
+for i in seq:
+    if len(P) == 0:
+        p = [trProb[('S', 'H')] * H[i] , trProb[('S', 'L')] * L[i]]
+    else:
+        p = []
+        p.append(P[-1][0] * trProb[('H', 'H')] * H[i] + P[-1][1] * trProb[('L', 'H')] * H[i])
+        p.append(P[-1][1] * trProb[('L', 'L')] * L[i] + P[-1][0] * trProb[('H', 'L')] * L[i])
 
+    P.append(p)
+
+print("Table: ", P)
+print("Probability: ", P[-1][0] + P[-1][1])
+
+import math 
+
+transition={'pu':{'s':{'pu': 1}, 'a':{'pu': 0.5, 'pf':0.5}},
+            'pf':{'s':{'rf':0.5, 'pu':0.5}, 'a':{'pf': 1}},
+            'ru':{'s':{'ru':0.5, 'pu':0.5}, 'a':{'pu':0.5, 'pf':0.5}},
+            'rf':{'s':{'rf':0.5, 'ru':0.5}, 'a':{'pf': 1}},
+            }
+
+rewards={'pu':0, 'pf':0, 'ru':10, 'rf':10}
+newrewards={}
+df=0.9
+
+for j in range(5):
+    for i in transition.keys():
+        m = -math.inf 
+        for actions in transition[i].keys():
+            s = 0
+            for state in transition[i][actions].keys():
+                s += rewards[state]* transition[i][actions][state]
+            m = max(m,s)
+        newrewards[i] = rewards[i] + df*m
+    flag = 0
+    print(rewards, newrewards)
+    for i in rewards.keys():
+        if abs(rewards[i] - newrewards[i]) > 0.5:
+            flag = 1
+    
+    if flag == 0:
+        break
+    
+    rewards = newrewards.copy()
+    newrewards = {}
